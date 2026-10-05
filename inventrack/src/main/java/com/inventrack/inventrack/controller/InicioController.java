@@ -21,7 +21,6 @@ public class InicioController {
           ul { line-height: 1.9; padding-left: 20px; }
           code { background: #f0f4f8; padding: 1px 5px; border-radius: 4px; }
           a { color: #0b69c7; }
-          .nota { background: #fff8e1; border-left: 4px solid #f5b800; padding: 8px 12px; margin-top: 24px; }
         </style>
         </head>
         <body>
@@ -68,9 +67,6 @@ public class InicioController {
           <li><a href="/reporte/stock-bajo?idSucursal=1">/reporte/stock-bajo?idSucursal=1</a></li>
           <li><a href="/reporte/ventas?desde=2026-09-01&amp;hasta=2026-09-30">/reporte/ventas?desde=2026-09-01&amp;hasta=2026-09-30</a></li>
         </ul>
-
-        <p class="nota">Estos enlaces son consultas <code>GET</code>. Los registros, actualizaciones y bajas
-        (<code>POST</code>, <code>PUT</code>, <code>DELETE</code>) se prueban con la colección de Postman.</p>
         </body>
         </html>
         """;
