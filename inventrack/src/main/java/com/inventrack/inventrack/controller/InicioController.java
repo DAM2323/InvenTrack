@@ -27,6 +27,14 @@ public class InicioController {
         <h1>InvenTrack API</h1>
         <p class="sub">Sistema de gestión de inventarios para pymes con sucursales – Grupo 6. Servicio en línea.</p>
 
+        <h2>Usuarios y sucursales</h2>
+        <ul>
+          <li><a href="/usuario/listar">/usuario/listar</a></li>
+          <li><a href="/usuario/buscar-por-id?idUsuario=1">/usuario/buscar-por-id?idUsuario=1</a></li>
+          <li><a href="/sucursal/listar">/sucursal/listar</a></li>
+          <li><a href="/sucursal/buscar-por-id?idSucursal=1">/sucursal/buscar-por-id?idSucursal=1</a></li>
+        </ul>
+
         <h2>Catálogo</h2>
         <ul>
           <li><a href="/categoria/listar">/categoria/listar</a></li>
