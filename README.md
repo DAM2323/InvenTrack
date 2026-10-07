@@ -23,3 +23,12 @@ La versión anterior, con los 61 endpoints y las HU iniciales, está guardada en
 cd inventrack
 ./mvnw spring-boot:run
 ```
+
+## Cómo implementar una HU
+Cada HU se arma por capas, igual que los módulos de apoyo que ya existen (por ejemplo `ProveedorController`, `ProveedorService` y `ProveedorRequest`):
+1. `dto/`: el request del POST/PUT, con los mismos campos que el prototipo y siempre con `idUsuario` (quien registra).
+2. `service/`: la lógica de negocio con `@Transactional`; ahí se actualiza `Inventario` y se registra `MovimientoInventario`.
+3. `controller/`: las rutas de la HU; los registrar responden `201 Created`.
+4. Errores: lanzar `BadRequestException` (400), `NotFoundException` (404) o `ConflictException` (409); `GlobalExceptionHandler` arma la respuesta.
+
+Todas las tablas ya tienen su entidad y su repositorio (incluidos `TrasladoRepository` y `DetalleTrasladoRepository`). Si una HU necesita otra consulta, se agrega el método en el repositorio correspondiente.
