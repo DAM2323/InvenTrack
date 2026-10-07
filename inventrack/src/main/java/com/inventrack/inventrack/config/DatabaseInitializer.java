@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
  * Carga db/inventrack.sql en una base vacía. Está apagado por defecto: solo actúa si
  * DB_INIT=true y la tabla "categorias" todavía no existe, así que es seguro dejarlo
  * activado en cada arranque (no duplica datos).
+ * Si además DB_RESET=true, antes de cargar borra el esquema public (todas las tablas y
+ * datos); solo debe usarse una vez y volver a dejarlo en false.
  */
 @Component
 public class DatabaseInitializer implements ApplicationRunner {
@@ -35,6 +37,13 @@ public class DatabaseInitializer implements ApplicationRunner {
         }
         String ruta = System.getenv().getOrDefault("DB_INIT_SCRIPT", "db/inventrack.sql");
         try (Connection con = dataSource.getConnection()) {
+            if ("true".equalsIgnoreCase(System.getenv("DB_RESET"))) {
+                log.warn("DB_RESET: se borra el esquema public y se vuelve a cargar la base.");
+                try (var st = con.createStatement()) {
+                    st.execute("drop schema public cascade");
+                    st.execute("create schema public");
+                }
+            }
             try (var st = con.createStatement();
                  var rs = st.executeQuery("select to_regclass('public.categorias')")) {
                 rs.next();
