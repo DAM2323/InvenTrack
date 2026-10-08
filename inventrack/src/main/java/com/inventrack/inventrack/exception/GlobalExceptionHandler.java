@@ -1,6 +1,8 @@
 package com.inventrack.inventrack.exception;
 
+import java.sql.SQLException;
 import java.util.Map;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -41,6 +43,17 @@ public class GlobalExceptionHandler {
             MethodArgumentTypeMismatchException.class})
     public ResponseEntity<Map<String, String>> malformed(Exception e) {
         return build(HttpStatus.BAD_REQUEST, "Solicitud inválida");
+    }
+
+    /** Reglas de la base de datos (UNIQUE, NOT NULL, CHECK, llaves foráneas). */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, String>> integrity(DataIntegrityViolationException e) {
+        String state = e.getMostSpecificCause() instanceof SQLException sql ? sql.getSQLState() : "";
+        return switch (state) {
+            case "23505" -> build(HttpStatus.CONFLICT, "Ya existe un registro con esos datos");
+            case "23503" -> build(HttpStatus.CONFLICT, "El registro está relacionado con otros datos");
+            default -> build(HttpStatus.BAD_REQUEST, "Faltan datos obligatorios o hay valores no permitidos");
+        };
     }
 
     private ResponseEntity<Map<String, String>> build(HttpStatus status, String message) {
