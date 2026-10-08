@@ -1,6 +1,10 @@
-# Catalogo de endpoints InvenTrack (EP01-EP61)
+# Catálogo de endpoints InvenTrack (EP01–EP61)
 
-Fuente: Informe_TP_InvenTrack, seccion 2.2.1. Rutas y nombres de parametros en camelCase.
+Catálogo base: Informe_TP_InvenTrack, sección 2.2.1. Rutas y parámetros en camelCase.
+
+Las entradas **EP55, EP56, EP57 y EP60** están actualizadas para **HU-INV-004**, según los controladores, servicios y validaciones de la implementación entregada. Las demás entradas conservan la referencia del informe original del equipo.
+
+Consulta los [parámetros, respuestas y ejemplos de HU04](#hu04-inventario-por-sucursal).
 
 | ID | Nombre / Propósito | Método / Ruta | Headers Requeridos | Parámetros / Body | Códigos de Respuesta |
 | :---- | :---- | :---- | :---- | :---- | :---- |
@@ -58,10 +62,139 @@ Fuente: Informe_TP_InvenTrack, seccion 2.2.1. Rutas y nombres de parametros en c
 | **EP52** | Buscar orden de compra por ID | GET /orden-compra/buscar-por-id | Authorization: Bearer | Query: idCompra | 200 OK, 404 Not Found |
 | **EP53** | Listar órdenes de compra | GET /orden-compra/listar | Authorization: Bearer | Query: idSucursal, estado | 200 OK |
 | **EP54** | Confirmar recepción de la orden | PUT /orden-compra/recibir | Authorization: Bearer | Query: idCompra | 200 OK, 404 Not Found, 409 Conflict |
-| **EP55** | Listar inventario por sucursal | GET /inventario/listar | Authorization: Bearer | Query: idSucursal | 200 OK |
-| **EP56** | Buscar inventario de un producto | GET /inventario/buscar | Authorization: Bearer | Query: idSucursal, idProducto | 200 OK, 404 Not Found |
-| **EP57** | Actualizar ubicación en almacén | PUT /inventario/actualizar-ubicacion | Content-Type: application/json, Authorization: Bearer | Body: idInventario, ubicacion | 200 OK, 404 Not Found |
+| **EP55** | Listar inventario por sucursal (HU04) | GET /inventario/listar | Ninguno | Query obligatoria: idSucursal (entero positivo) | 200 OK (lista o []), 400 Bad Request |
+| **EP56** | Buscar inventario de un producto (HU04) | GET /inventario/buscar | Ninguno | Query obligatoria: idSucursal, idProducto (enteros positivos) | 200 OK, 400 Bad Request, 404 Not Found |
+| **EP57** | Actualizar ubicación en almacén (HU04) | PUT /inventario/actualizar-ubicacion | Content-Type: application/json | Body: idInventario (entero positivo), ubicacion (con contenido, máximo 100 caracteres) | 200 OK, 400 Bad Request, 404 Not Found |
 | **EP58** | Listar movimientos de inventario | GET /movimiento/listar | Authorization: Bearer | Query: idSucursal, desde, hasta | 200 OK |
 | **EP59** | Consultar kárdex de un producto | GET /movimiento/kardex | Authorization: Bearer | Query: idProducto, idSucursal | 200 OK, 404 Not Found |
-| **EP60** | Reporte de productos bajo el stock mínimo | GET /reporte/stock-bajo | Authorization: Bearer | Query: idSucursal | 200 OK |
+| **EP60** | Reporte de productos con disponible <= mínimo (HU04) | GET /reporte/stock-bajo | Ninguno | Query obligatoria: idSucursal (entero) | 200 OK (lista o []), 400 Bad Request |
 | **EP61** | Reporte de ventas por periodo | GET /reporte/ventas | Authorization: Bearer | Query: desde, hasta, idSucursal | 200 OK, 400 Bad Request |
+
+## HU04 Inventario por sucursal
+
+Historia: **HU-INV-004 — Consultar el inventario por sucursal y detectar los productos por reponer**.
+Rol: Administrador. Responsable: Freddy Mauricio Galindo Rivadeneyra (`u202016286`).
+
+Referencia: [HU04](HU04_Compras_InvenTrack.docx) y [SQL del proyecto](../db/inventrack.sql).
+URL local por defecto: `http://localhost:8080` (el puerto se puede configurar con `PORT`).
+Las cuatro rutas devuelven JSON. En la implementación entregada se consultan sin el header `Authorization`.
+
+### EP55 — Listar el inventario de una sucursal
+
+```http
+GET /inventario/listar?idSucursal=1
+```
+
+| Parámetro query | Tipo | Regla |
+| --- | --- | --- |
+| `idSucursal` | Entero | Obligatorio, mayor que cero. |
+
+- **200 OK:** lista de registros de inventario de la sucursal. Cada registro contiene `id`, `sucursal`, `producto`, `cantidadDisponible`, `ubicacion` y `actualizacion`. `sucursal` y `producto` son objetos; el producto incluye `stockMinimo`.
+- **200 OK con `[]`:** la sucursal consultada no tiene registros de inventario.
+- **400 Bad Request:** falta el parámetro, no es un entero o es menor o igual a cero.
+
+Con los datos iniciales del SQL, la sucursal 1 tiene **7 registros** de inventario.
+
+### EP56 — Buscar un producto en una sucursal
+
+```http
+GET /inventario/buscar?idSucursal=1&idProducto=1
+```
+
+| Parámetro query | Tipo | Regla |
+| --- | --- | --- |
+| `idSucursal` | Entero | Obligatorio, mayor que cero. |
+| `idProducto` | Entero | Obligatorio, mayor que cero. |
+
+- **200 OK:** un registro de inventario, con los mismos campos descritos en EP55.
+- **400 Bad Request:** falta un parámetro, no es un entero o es menor o igual a cero.
+- **404 Not Found:** el producto no tiene inventario en la sucursal consultada. Body:
+
+```json
+{
+  "mensaje": "No hay inventario para ese producto"
+}
+```
+
+Con los datos iniciales del SQL, el producto 1 en la sucursal 1 tiene `cantidadDisponible: 8`.
+La búsqueda `idSucursal=1&idProducto=14` corresponde al caso de respuesta 404.
+
+### EP60 — Consultar productos con stock bajo
+
+```http
+GET /reporte/stock-bajo?idSucursal=1
+```
+
+| Parámetro query | Tipo | Regla |
+| --- | --- | --- |
+| `idSucursal` | Entero | Obligatorio. |
+
+Se incluyen los productos cuyo **`cantidadDisponible <= stockMinimo`**, incluyendo el caso en que ambas cantidades son iguales.
+
+- **200 OK:** lista con los campos `idProducto`, `producto` (nombre), `disponible` y `minimo`.
+- **200 OK con `[]`:** no hay productos con stock bajo para la sucursal consultada. Con los datos iniciales, `idSucursal=99` devuelve una lista vacía.
+- **400 Bad Request:** falta `idSucursal` o no es un entero.
+
+Ejemplo de respuesta para la sucursal 1 con los datos iniciales del SQL:
+
+```json
+[
+  {
+    "idProducto": 3,
+    "producto": "Taladro Truper 1/2\"",
+    "disponible": 1,
+    "minimo": 5
+  },
+  {
+    "idProducto": 6,
+    "producto": "Parlante Philips Bluetooth",
+    "disponible": 5,
+    "minimo": 8
+  },
+  {
+    "idProducto": 4,
+    "producto": "Aceite Primor 1L",
+    "disponible": 20,
+    "minimo": 40
+  },
+  {
+    "idProducto": 8,
+    "producto": "Fideos Don Vittorio 500g",
+    "disponible": 40,
+    "minimo": 60
+  }
+]
+```
+
+### EP57 — Actualizar la ubicación física
+
+```http
+PUT /inventario/actualizar-ubicacion
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "idInventario": 1,
+  "ubicacion": "Pasillo Z"
+}
+```
+
+| Campo JSON | Tipo | Regla |
+| --- | --- | --- |
+| `idInventario` | Entero | Obligatorio, mayor que cero. |
+| `ubicacion` | Cadena | Obligatoria, con contenido y como máximo 100 caracteres. |
+
+- **200 OK:** el registro de inventario actualizado. Cambian `ubicacion` y `actualizacion`; se conserva el producto, la sucursal y la cantidad disponible. Se eliminan los espacios al inicio y al final de la ubicación.
+- **400 Bad Request:** JSON inválido, identificador ausente o no positivo, ubicación vacía o de más de 100 caracteres.
+- **404 Not Found:** no existe el identificador de inventario. Body:
+
+```json
+{
+  "mensaje": "Inventario no encontrado"
+}
+```
+
+Los errores manejados por `GlobalExceptionHandler` usan un objeto JSON con el campo `mensaje`.
